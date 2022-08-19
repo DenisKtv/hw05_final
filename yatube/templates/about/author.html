@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Об авторе{% endblock %}
+{% block content %}
+<body>
+	<div class="main-nav">
+		<div class="container">
+			<header class="group top-nav">
+				<div class="navigation-toggle" data-tools="navigation-toggle" data-target="#navbar-1">
+				    <span class="logo"><h3>Денис К.</h3></span>
+				</div>
+			    <nav id="navbar-1" class="navbar item-nav">
+				    <ul>
+				        <li class="active"><a href="#about">Об авторе</a></li>
+				        <li><a href="#experiences">Опыт</a></li>
+				        <li><a href="#achievements">Достижения</a></li>
+				        <li><a href="#skills">Навыки</a></li>
+				    </ul>
+				</nav>
+			</header>
+		</div>
+	</div>
+	<div class="intro section" id="about">
+		<div class="container">
+			<div class="units-row units-split wrap">
+				<div class="unit-80">
+					<h1>Обо мне<br><span id="typed"></span></h1>
+				</div>
+				<p>
+					Мне 31, я из города Солигорск.
+				</p>
+			</div>
+		</div>
+	</div>
+	<div class="work section second" id="experiences">
+		<div class="container">
+			<h1>Работа<br>Опыт</h1>
+			<ul class="work-list">
+				<li>2009-2012</li>
+				<li>учился на техник-программиста</li>
+			</ul>
+			<ul class="work-list">
+				<li>2014-2022</li>
+				<li>Работал мастером в "ОАО Беларуськалий"</li>
+			</ul>
+			<ul class="work-list">
+				<li>2015-2021</li>
+				<li>Учился на инженер-механика</li>
+			</ul>
+		</div>
+	</div>
+	<div class="award section second" id="achievements">
+		<div class="container">
+			<h1>Достижения</h1>
+			<ul class="award-list list-flat">
+				<li>Прочитал Укус питона</li>
+				<li>Прочитал Грокаем Алгоритмы</li>
+				<li>Прошел курс на Udemy по Python</li>
+				<li>Прошел курс Base Python на Sololearn </li>
+				<li>Наконец-то решился на Практикум!</li>
+			</ul>
+		</div>
+	</div>
+	<div class="skills section second" id="skills">
+		<div class="container">
+			<h1>Навыки</h1>
+			<ul class="skill-list list-flat">
+				<li>Надеюсь в будущем на крепкий Python</li>
+				<li>MySql/SQlight...</li>
+				<li>Framework Django</li>
+			</ul>
+		</div>
+	</div>
+	</div>
+</body>
+</html>
+{% endblock %}

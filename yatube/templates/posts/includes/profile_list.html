@@ -1,0 +1,18 @@
+{% load thumbnail %}
+<article>
+    <ul>
+        <li>
+          Автор: {{ post.author.get_full_name }}
+        </li>
+        <li>
+          Дата публикации: {{ post.pub_date|date:"d E Y" }}
+        </li>
+        <li>
+          Группа: {{ post.group.title }}
+        </li>
+      </ul>
+      {% thumbnail post.image "960x300" crop="center" upscale=True as im %}
+      <img class="card-img my-2" src="{{ im.url }}">
+      {% endthumbnail %}
+      <p>{{ post.text }}</p>
+</article> 
