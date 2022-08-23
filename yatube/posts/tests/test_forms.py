@@ -7,7 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Group, Post, Comment, Follow
+from posts.models import Group, Post, Comment
 
 
 User = get_user_model()
@@ -23,12 +23,6 @@ class TestCreateForm(TestCase):
         cls.user = User.objects.create_user(username='user')
         cls.authorized = Client()
         cls.authorized.force_login(cls.user)
-        cls.follower = Client()
-        cls.user2 = User.objects.create_user(username='Boris')
-        cls.follower.force_login(cls.user2)
-        cls.user3 = User.objects.create_user(username='NeBoris')
-        cls.unfollower = Client()
-        cls.unfollower.force_login(cls.user3)
 
         cls.group = Group.objects.create(
             title='Тестовое имя',
@@ -92,26 +86,6 @@ class TestCreateForm(TestCase):
                 image='posts/small.gif',
             ).exists()
         )
-
-    def test_follow_and_unfollow_page(self):
-        """Проверка подписки/отписки"""
-        follow_page_count = Follow.objects.count()
-        self.follower.get(f'/profile/{TestCreateForm.user}/follow/')
-        self.assertEqual(Follow.objects.count(), follow_page_count + 1)
-        self.assertTrue(
-            Follow.objects.filter(
-                user=TestCreateForm.user2,
-                author=TestCreateForm.user,
-            ).exists()
-        )
-        self.follower.get(f'/profile/{TestCreateForm.user}/unfollow/')
-        self.assertEqual(Follow.objects.count(), follow_page_count)
-
-    def test_page_follow(self):
-        """Проверка наличия постов неподписанного автора"""
-        response = self.unfollower.get('/follow/')
-        response2 = self.follower.get('/follow/')
-        self.assertNotEqual(response.content, response2.content)
 
     def test_edit_post(self):
         """Проверка изменения поста"""

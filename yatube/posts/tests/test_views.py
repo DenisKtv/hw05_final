@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.conf import settings
 from django.core.cache import cache
 
-from posts.models import Group, Post
+from posts.models import Group, Post, Follow
 
 User = get_user_model()
 
@@ -32,7 +32,6 @@ class PostViewsTest(TestCase):
             text='Тестовая запись',
             author=cls.user,
             group=cls.group,
-            # image='Тестовая картинка',
         )
 
     def setUp(self) -> None:
@@ -158,15 +157,15 @@ class PostViewsTest(TestCase):
 
     def test_cache_in_main_page(self):
         response = self.authorized.get(reverse('posts:main_page'))
-        first_obj = response.content
+        page_content = response.content
         Post.objects.all().delete()
         response_after_delete = self.authorized.get(reverse('posts:main_page'))
-        second_obj = response_after_delete.content
+        page_content_after_delete = response_after_delete.content
         cache.clear()
         response_cache_clear = self.authorized.get(reverse('posts:main_page'))
-        third_obj = response_cache_clear.content
-        self.assertEqual(first_obj, second_obj)
-        self.assertNotEqual(first_obj, third_obj)
+        page_content_cache_clear = response_cache_clear.content
+        self.assertEqual(page_content, page_content_after_delete)
+        self.assertNotEqual(page_content, page_content_cache_clear)
 
     def test_in_post_another_group(self):
         """Тест что пост не попал в другую группу"""
@@ -203,16 +202,70 @@ class TestPaginator(TestCase):
 
     def test_paginator_pages(self):
         """Тест пагинатора первых страниц профиля, групп и главной"""
-        address_names = [
+        address_names = (
             reverse('posts:main_page'),
-            reverse('posts:group_posts_list', kwargs={'slug': 'test-slug'}),
-            reverse('posts:profile', kwargs={'username': f'{self.user}'}),
-        ]
+            reverse(
+                'posts:group_posts_list',
+                kwargs={'slug': self.group.slug}
+            ),
+            reverse('posts:profile', kwargs={'username': self.user.username}),
+        )
+        pages = (
+            ('?page=1', settings.POSTS_PER_PAGE),
+            ('?page=2', 3),
+        )
         for reverse_name in address_names:
-            with self.subTest():
-                response = self.authorized.get(reverse_name)
-                self.assertEqual(len(
-                    response.context['page_obj']), settings.POSTS_PER_PAGE)
-                response_2 = self.authorized.get(reverse_name + '?page=2')
-                self.assertEqual(len(
-                    response_2.context['page_obj']), 3)
+            for page_number, number_of_posts in pages:
+                with self.subTest():
+                    response = self.authorized.get(reverse_name + page_number)
+                    self.assertEqual(len(
+                        response.context['page_obj']),
+                        number_of_posts
+                    )
+
+
+class TestSubscribers(TestCase):
+    """Тестируем на правильные HTML-шаблоны и context"""
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='user')
+        cls.authorized = Client()
+        cls.authorized.force_login(cls.user)
+        cls.follower = Client()
+        cls.user2 = User.objects.create_user(username='Boris')
+        cls.follower.force_login(cls.user2)
+        cls.user3 = User.objects.create_user(username='NeBoris')
+        cls.unfollower = Client()
+        cls.unfollower.force_login(cls.user3)
+        cls.group = Group.objects.create(
+            title='Тестовое имя',
+            slug='test-slug',
+            description='Тестовое описание',
+        )
+        cls.post = Post.objects.create(
+            text='Тестовая запись',
+            author=cls.user,
+            group=cls.group,
+        )
+
+    def test_follow_and_unfollow_page(self):
+        """Проверка подписки/отписки"""
+        follow_page_count = Follow.objects.count()
+        self.follower.get(f'/profile/{TestSubscribers.user}/follow/')
+        self.assertEqual(Follow.objects.count(), follow_page_count + 1)
+        self.assertTrue(
+            Follow.objects.filter(
+                user=TestSubscribers.user2,
+                author=TestSubscribers.user,
+            ).exists()
+        )
+        self.follower.get(
+            f'/profile/{TestSubscribers.user}/unfollow/')
+        self.assertEqual(Follow.objects.count(), follow_page_count)
+
+    def test_page_follow(self):
+        """Проверка наличия постов неподписанного автора"""
+        response = self.unfollower.get('/follow/')
+        response2 = self.follower.get('/follow/')
+        self.assertNotEqual(response.content, response2.content)

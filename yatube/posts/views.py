@@ -10,7 +10,7 @@ from .utils.paginator import paginator
 @cache_page(20, key_prefix='index_page')
 def index(request):
     template = 'posts/index.html'
-    post_list = Post.objects.all()
+    post_list = Post.objects.select_related('group')
     page_obj = paginator(post_list, request)
     context = {
         'page_obj': page_obj,
@@ -21,7 +21,7 @@ def index(request):
 def group_posts(request, slug):
     template = 'posts/group_list.html'
     group = get_object_or_404(Group, slug=slug)
-    posts = group.posts.all()
+    posts = group.posts.select_related('group')
     page_obj = paginator(posts, request)
     context = {
         'group': group,
@@ -33,7 +33,9 @@ def group_posts(request, slug):
 def profile(request, username):
     template = 'posts/profile.html'
     author = get_object_or_404(User, username=username)
-    post_list_user = author.posts.all().filter(author__username=username)
+    post_list_user = author.posts.select_related('author').filter(
+        author__username=username
+    )
     count_post = post_list_user.count()
     page_obj = paginator(post_list_user, request)
     following = request.user.is_authenticated and Follow.objects.filter(
@@ -52,9 +54,11 @@ def profile(request, username):
 def post_detail(request, post_id):
     template = 'posts/post_detail.html'
     post = get_object_or_404(Post, pk=post_id)
-    count_post = Post.objects.filter(author_id=post.author.id).count()
+    count_post = Post.objects.select_related('post').filter(
+        author_id=post.author.id
+    ).count()
     form = CommentForm()
-    comments = post.comments.all()
+    comments = post.comments.select_related('post')
     context = {
         'post': post,
         'count_post': count_post,
@@ -118,7 +122,7 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     template = 'posts/follow.html'
-    post_list = Post.objects.filter(author__following__user=request.user)
+    post_list = Post.objects.all().filter(author__following__user=request.user)
     page_obj = paginator(post_list, request)
     context = {
         'page_obj': page_obj,
