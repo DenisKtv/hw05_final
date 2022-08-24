@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
@@ -225,34 +227,24 @@ class TestPaginator(TestCase):
 
 
 class TestSubscribers(TestCase):
-    """Тестируем на правильные HTML-шаблоны и context"""
+    """Тестируем возможности подписчика"""
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls.user = User.objects.create_user(username='user')
-        cls.authorized = Client()
-        cls.authorized.force_login(cls.user)
+        cls.author = Client()
+        cls.user = User.objects.create_user(username='Boris')
+        cls.author.force_login(cls.user)
+        cls.user2 = User.objects.create_user(username='NeBoris')
         cls.follower = Client()
-        cls.user2 = User.objects.create_user(username='Boris')
         cls.follower.force_login(cls.user2)
-        cls.user3 = User.objects.create_user(username='NeBoris')
-        cls.unfollower = Client()
-        cls.unfollower.force_login(cls.user3)
-        cls.group = Group.objects.create(
-            title='Тестовое имя',
-            slug='test-slug',
-            description='Тестовое описание',
-        )
-        cls.post = Post.objects.create(
-            text='Тестовая запись',
-            author=cls.user,
-            group=cls.group,
-        )
 
-    def test_follow_and_unfollow_page(self):
-        """Проверка подписки/отписки"""
+    def test_follow_page(self):
+        """Проверка подписки на автора"""
         follow_page_count = Follow.objects.count()
-        self.follower.get(f'/profile/{TestSubscribers.user}/follow/')
+        response = self.follower.get(
+            f'/profile/{TestSubscribers.user}/follow/'
+        )
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertEqual(Follow.objects.count(), follow_page_count + 1)
         self.assertTrue(
             Follow.objects.filter(
@@ -260,12 +252,52 @@ class TestSubscribers(TestCase):
                 author=TestSubscribers.user,
             ).exists()
         )
-        self.follower.get(
-            f'/profile/{TestSubscribers.user}/unfollow/')
-        self.assertEqual(Follow.objects.count(), follow_page_count)
 
-    def test_page_follow(self):
-        """Проверка наличия постов неподписанного автора"""
-        response = self.unfollower.get('/follow/')
-        response2 = self.follower.get('/follow/')
-        self.assertNotEqual(response.content, response2.content)
+    def test_unfollow_page(self):
+        """Проверка отписки от автора"""
+        Follow.objects.create(
+            user=TestSubscribers.user2,
+            author=TestSubscribers.user,
+        )
+        follow_page_count = Follow.objects.count()
+        response = self.follower.get(
+            f'/profile/{TestSubscribers.user}/unfollow/')
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
+        self.assertEqual(Follow.objects.count(), follow_page_count - 1)
+        self.assertFalse(
+            Follow.objects.filter(
+                user=TestSubscribers.user2,
+                author=TestSubscribers.user,
+            ).exists()
+        )
+
+    def test_authors_posts_exist_in_subscriber_pages(self):
+        """Тест, что пост пользователя, на которого оформлена подписка,
+        появляется в подписках"""
+        new_post = Post.objects.create(
+            text='Тестовая запись',
+            author=TestSubscribers.user,
+        )
+        Follow.objects.create(
+            user=TestSubscribers.user2,
+            author=TestSubscribers.user,
+        )
+        response = self.follower.get('/follow/')
+        self.assertIn(
+            new_post,
+            response.context['page_obj']
+        )
+
+    def test_authors_posts_not_exist_in_unfollowers_pages(self):
+        """Тест, что пост пользователя, на которого не оформлена подписка,
+        не появляется в подписках"""
+        new_post = Post.objects.create(
+            text='Тестовая запись',
+            author=TestSubscribers.user,
+        )
+        Follow.objects.all().delete()
+        response = self.follower.get('/follow/')
+        self.assertNotIn(
+            new_post,
+            response.context['page_obj']
+        )
